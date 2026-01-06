@@ -27,7 +27,7 @@ apt-get install -y \
     composer \
     nodejs \
     postgresql-15 \
-    timescaledb-2-postgresql-15 \
+    timescaledb-2-postgresql-15=2.23.1~debian12-1514 \
     nginx \
     build-essential \
     autoconf \
