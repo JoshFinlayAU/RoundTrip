@@ -1,0 +1,15 @@
+[Unit]
+Description=RoundTrip Poller
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=roundtrip
+Group=roundtrip
+WorkingDirectory=/opt/roundtrip
+ExecStart=/usr/bin/php artisan roundtrip:poll
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

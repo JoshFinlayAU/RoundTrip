@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import SmokeChart from '@/components/SmokeChart';
 import TargetSelector from '@/components/TargetSelector';
 import { fetchTargets, fetchSeries, type Target, type PingPoint } from '@/lib/api';
-import { initEcho } from '@/lib/echo';
 
 export default function Home() {
   const [targets, setTargets] = useState<Target[]>([]);
@@ -49,44 +48,16 @@ export default function Home() {
     }
   }, [selectedTargetId, loadSeries]);
 
+  // Poll for new data every 5 seconds
   useEffect(() => {
     if (!selectedTargetId) return;
 
-    const echo = initEcho();
-    if (!echo) return;
+    const interval = setInterval(() => {
+      loadSeries(selectedTargetId);
+    }, 5000);
 
-    const channel = echo.channel(`target.${selectedTargetId}`);
-    
-    channel.listen('.ping.recorded', (event: { 
-      target_id: number;
-      ts: string;
-      min_ms: number | null;
-      avg_ms: number | null;
-      max_ms: number | null;
-      loss_pct: number | null;
-    }) => {
-      if (event.target_id === selectedTargetId) {
-        setPoints(prev => {
-          const newPoints = [...prev, {
-            ts: event.ts,
-            min_ms: event.min_ms,
-            avg_ms: event.avg_ms,
-            max_ms: event.max_ms,
-            loss_pct: event.loss_pct,
-          }];
-          // Keep last 500 points
-          if (newPoints.length > 500) {
-            return newPoints.slice(-500);
-          }
-          return newPoints;
-        });
-      }
-    });
-
-    return () => {
-      echo.leave(`target.${selectedTargetId}`);
-    };
-  }, [selectedTargetId]);
+    return () => clearInterval(interval);
+  }, [selectedTargetId, loadSeries]);
 
   const selectedTarget = targets.find(t => t.id === selectedTargetId);
 

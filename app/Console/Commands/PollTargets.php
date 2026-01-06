@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Events\PingResultRecorded;
 use App\Models\PingResult;
 use App\Models\Target;
 use Carbon\Carbon;
@@ -79,17 +78,6 @@ class PollTargets extends Command
         if (!empty($inserts)) {
             PingResult::insert($inserts);
             $this->line(sprintf('[%s] Polled %d targets', $now->format('H:i:s'), count($inserts)));
-
-            foreach ($inserts as $insert) {
-                event(new PingResultRecorded(
-                    targetId: $insert['target_id'],
-                    ts: $insert['ts']->toIso8601String(),
-                    minMs: $insert['min_ms'],
-                    avgMs: $insert['avg_ms'],
-                    maxMs: $insert['max_ms'],
-                    lossPct: $insert['loss_pct'],
-                ));
-            }
         }
     }
 

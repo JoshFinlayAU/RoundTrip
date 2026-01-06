@@ -1,0 +1,15 @@
+[Unit]
+Description=RoundTrip API Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=roundtrip
+Group=roundtrip
+WorkingDirectory=/opt/roundtrip
+ExecStart=/usr/bin/php artisan serve --host=127.0.0.1 --port=8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

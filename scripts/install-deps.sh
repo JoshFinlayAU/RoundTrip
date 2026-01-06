@@ -28,6 +28,7 @@ apt-get install -y \
     nodejs \
     postgresql-15 \
     timescaledb-2-postgresql-15 \
+    nginx \
     build-essential \
     autoconf \
     automake \

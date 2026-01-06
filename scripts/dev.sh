@@ -15,10 +15,6 @@ cd "$PROJECT_DIR"
 php artisan serve --host=0.0.0.0 --port=8000 &
 BACKEND_PID=$!
 
-# Reverb websocket server
-php artisan reverb:start &
-REVERB_PID=$!
-
 # Poller
 php artisan roundtrip:poll &
 POLLER_PID=$!
@@ -31,7 +27,6 @@ FRONTEND_PID=$!
 echo ""
 echo "Services started:"
 echo "  Backend:  http://localhost:8000 (PID: $BACKEND_PID)"
-echo "  Reverb:   ws://localhost:8080 (PID: $REVERB_PID)"
 echo "  Poller:   running (PID: $POLLER_PID)"
 echo "  Frontend: http://localhost:3000 (PID: $FRONTEND_PID)"
 echo ""
