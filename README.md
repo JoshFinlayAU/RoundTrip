@@ -19,9 +19,10 @@ Designed to run alongside LibreNMS but works standalone too.
 
 ## Requirements
 
-- Debian 12 (tested on bookworm, should work on Ubuntu 22.04+)
-- PostgreSQL 15 with TimescaleDB
-- PHP 8.2+
+- **Debian** 11 (bullseye), 12 (bookworm), or 13 (trixie)
+- **Ubuntu** 20.04 (focal), 22.04 (jammy), or 24.04 (noble)
+- PostgreSQL 15 with TimescaleDB (installed automatically)
+- PHP 8.1+ (version depends on OS)
 - Node.js 20+
 - fping 5.5+ (needs JSON output, script builds from source - I could be bias here because I wrote the initial JSON implementation 😛)
 

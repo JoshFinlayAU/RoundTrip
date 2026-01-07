@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-# Install deps for RoundTrip on Debian 12
+# Install deps for RoundTrip on Debian/Ubuntu
+# Supported: Debian 11 (bullseye), 12 (bookworm), Ubuntu 22.04 (jammy), 24.04 (noble)
 # Run as root
 
 if [ "$EUID" -ne 0 ]; then
@@ -9,7 +10,88 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Detect OS and version
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS_ID="$ID"
+    OS_VERSION="$VERSION_ID"
+    OS_CODENAME="$VERSION_CODENAME"
+else
+    echo "Cannot detect OS. /etc/os-release not found."
+    exit 1
+fi
+
+echo "Detected: $OS_ID $OS_VERSION ($OS_CODENAME)"
+
+# Determine PHP version and TimescaleDB repo based on OS
+case "$OS_ID" in
+    debian)
+        case "$OS_CODENAME" in
+            bullseye)  # Debian 11
+                PHP_VERSION="8.1"
+                TSDB_DISTRO="debian"
+                TSDB_CODENAME="bullseye"
+                ;;
+            bookworm)  # Debian 12
+                PHP_VERSION="8.2"
+                TSDB_DISTRO="debian"
+                TSDB_CODENAME="bookworm"
+                ;;
+            trixie)    # Debian 13
+                PHP_VERSION="8.4"
+                TSDB_DISTRO="debian"
+                TSDB_CODENAME="trixie"
+                ;;
+            *)
+                echo "Unsupported Debian version: $OS_CODENAME"
+                exit 1
+                ;;
+        esac
+        PGDG_CODENAME="$OS_CODENAME-pgdg"
+        ;;
+    ubuntu)
+        case "$OS_CODENAME" in
+            focal)     # Ubuntu 20.04
+                PHP_VERSION="8.1"
+                TSDB_DISTRO="ubuntu"
+                TSDB_CODENAME="focal"
+                USE_PHP_PPA=true
+                ;;
+            jammy)     # Ubuntu 22.04
+                PHP_VERSION="8.1"
+                TSDB_DISTRO="ubuntu"
+                TSDB_CODENAME="jammy"
+                USE_PHP_PPA=true
+                ;;
+            noble)     # Ubuntu 24.04
+                PHP_VERSION="8.3"
+                TSDB_DISTRO="ubuntu"
+                TSDB_CODENAME="noble"
+                ;;
+            *)
+                echo "Unsupported Ubuntu version: $OS_CODENAME"
+                exit 1
+                ;;
+        esac
+        PGDG_CODENAME="$OS_CODENAME-pgdg"
+        ;;
+    *)
+        echo "Unsupported OS: $OS_ID"
+        exit 1
+        ;;
+esac
+
+echo "Using PHP $PHP_VERSION"
 echo "Installing dependencies..."
+
+# PHP PPA for older Ubuntu versions that don't have PHP 8.1+ in default repos
+if [ "$USE_PHP_PPA" = true ]; then
+    if [ ! -f /etc/apt/sources.list.d/ondrej-ubuntu-php-*.list ]; then
+        echo "Adding PHP PPA..."
+        apt-get install -y software-properties-common
+        add-apt-repository -y ppa:ondrej/php
+    fi
+fi
 
 # Node 20
 if ! command -v node &> /dev/null; then
@@ -20,27 +102,27 @@ fi
 # PostgreSQL official repo (for latest 15.x that works with TimescaleDB)
 if [ ! -f /etc/apt/sources.list.d/pgdg.list ]; then
     echo "Adding PostgreSQL repo..."
-    echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    echo "deb http://apt.postgresql.org/pub/repos/apt $PGDG_CODENAME main" > /etc/apt/sources.list.d/pgdg.list
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
 fi
 
 # TimescaleDB repo
 if [ ! -f /etc/apt/sources.list.d/timescaledb.list ]; then
     echo "Adding TimescaleDB repo..."
-    echo "deb https://packagecloud.io/timescale/timescaledb/debian/ bookworm main" > /etc/apt/sources.list.d/timescaledb.list
+    echo "deb https://packagecloud.io/timescale/timescaledb/$TSDB_DISTRO/ $TSDB_CODENAME main" > /etc/apt/sources.list.d/timescaledb.list
     curl -fsSL https://packagecloud.io/timescale/timescaledb/gpgkey | gpg --dearmor -o /etc/apt/trusted.gpg.d/timescaledb.gpg
 fi
 
 apt-get update
 
 apt-get install -y \
-    php8.2-fpm \
-    php8.2-cli \
-    php8.2-pgsql \
-    php8.2-mbstring \
-    php8.2-xml \
-    php8.2-curl \
-    php8.2-zip \
+    php${PHP_VERSION}-fpm \
+    php${PHP_VERSION}-cli \
+    php${PHP_VERSION}-pgsql \
+    php${PHP_VERSION}-mbstring \
+    php${PHP_VERSION}-xml \
+    php${PHP_VERSION}-curl \
+    php${PHP_VERSION}-zip \
     composer \
     nodejs \
     postgresql-15 \
@@ -55,6 +137,7 @@ apt-get install -y \
 # TimescaleDB config
 TSDB_CONF="/etc/postgresql/15/main/conf.d/timescaledb.conf"
 if [ ! -f "$TSDB_CONF" ] || ! grep -q "timescaledb" "$TSDB_CONF" 2>/dev/null; then
+    mkdir -p /etc/postgresql/15/main/conf.d
     echo "shared_preload_libraries = 'timescaledb'" > "$TSDB_CONF"
     systemctl restart postgresql
 fi
@@ -76,8 +159,10 @@ fi
 
 echo ""
 echo "Done. Versions:"
+echo "  OS:    $OS_ID $OS_VERSION ($OS_CODENAME)"
 echo "  fping: $(/usr/local/sbin/fping --version 2>&1 | head -1)"
 echo "  node:  $(node -v)"
 echo "  php:   $(php -v | head -1)"
+echo "  psql:  $(psql --version)"
 echo ""
 echo "Next: ./scripts/setup.sh"
