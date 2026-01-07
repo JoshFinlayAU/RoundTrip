@@ -98,7 +98,7 @@ RoundTrip includes a plugin for LibreNMS that shows latency graphs directly on d
 php artisan token:manage  # create a token for LibreNMS
 ```
 
-Then enable and configure the plugin in LibreNMS under Settings > System > Plugins.
+Then enable and configure the plugin in LibreNMS under https://librenms/plugin/settings
 
 See `librenms-plugin/README.md` for full setup instructions.
 
@@ -113,6 +113,8 @@ GET  /api/targets/{id}/series        - get ping data (supports ?from=&to=)
 GET  /api/groups                     - list groups
 POST /api/auth/login                 - get token
 ```
+
+CORS is enabled by default (allows all origins). If you need to restrict origins, edit `config/cors.php`.
 
 ## Stack
 

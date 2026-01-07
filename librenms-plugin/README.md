@@ -30,10 +30,10 @@ php artisan token:manage
 
 ## Configure
 
-1. Go to LibreNMS Settings > System > Plugins
+1. Go to https://yourlibrenms/plugin/settings
 2. Enable "RoundTrip"
 3. Click the gear icon to open settings
-4. Set API URL to your RoundTrip instance (e.g., `/roundtrip` if on same server)
+4. Set API URL to your RoundTrip instance (e.g., `http://librenms/roundtrip` if on same server) - this will need to be accessible from your browser not from the LibreNMS server (consider CORS, although RoundTrip has a ['*'] CORS config)
 5. Paste the API token
 6. Save
 
