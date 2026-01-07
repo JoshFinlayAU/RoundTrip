@@ -17,6 +17,13 @@ if ! command -v node &> /dev/null; then
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 fi
 
+# PostgreSQL official repo (for latest 15.x that works with TimescaleDB)
+if [ ! -f /etc/apt/sources.list.d/pgdg.list ]; then
+    echo "Adding PostgreSQL repo..."
+    echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+fi
+
 # TimescaleDB repo
 if [ ! -f /etc/apt/sources.list.d/timescaledb.list ]; then
     echo "Adding TimescaleDB repo..."
