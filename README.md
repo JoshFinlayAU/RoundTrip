@@ -2,6 +2,10 @@
 
 Network latency monitoring with smoke-style graphs. Built as a modern alternative to SmokePing.
 
+![RoundTrip UI](screenshots/rt-ui.jpg)
+
+![LibreNMS Integration](screenshots/rt-libre.jpg)
+
 ## What it does
 
 - Pings targets at configurable intervals using fping
