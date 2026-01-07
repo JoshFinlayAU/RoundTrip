@@ -1,104 +1,108 @@
 # RoundTrip
 
-A modern, clean alternative to SmokePing for network latency monitoring.
+Network latency monitoring with smoke-style graphs. Built as a modern alternative to SmokePing.
 
-## Features
+## What it does
 
-- Latency monitoring with fping (JSON output)
-- TimescaleDB for efficient time-series storage
-- D3.js smoke-style visualization
-- Runs alongside LibreNMS on the same server
+- Pings targets at configurable intervals using fping
+- Stores results in TimescaleDB (handles time-series data well)
+- Shows min/avg/max latency as a "smoke" band with packet loss markers
+- Groups targets for organisation
+- Interactive charts with tooltips, configurable time ranges (15m to 24h)
+- Token-based auth, manage users/targets/groups via CLI
+
+Designed to run alongside LibreNMS but works standalone too.
 
 ## Requirements
 
-- Debian 12 (bookworm)
+- Debian 12 (tested on bookworm, should work on Ubuntu 22.04+)
 - PostgreSQL 15 with TimescaleDB
 - PHP 8.2+
 - Node.js 20+
-- fping 5.5+ (built from source for JSON support)
+- fping 5.5+ (needs JSON output, script builds from source)
 
-## Quick Start
+## Install
 
 ```bash
-# Install dependencies (run as root)
+# As root - installs postgres, timescaledb, php, node, builds fping
 ./scripts/install-deps.sh
 
-# Setup application
+# Creates db, runs migrations, builds frontend
 ./scripts/setup.sh
 
-# Install systemd services
+# Sets up systemd services
 ./scripts/install-services.sh
 ```
 
-Then add to your nginx config and access at `http://yourserver/roundtrip`
+## Nginx Setup
 
-## Production Install (with LibreNMS)
-
-RoundTrip is designed to run alongside LibreNMS on the same server.
-
-After running the install scripts, add this to your LibreNMS nginx server block:
+Add to your existing nginx server block (works with LibreNMS):
 
 ```nginx
 include /opt/roundtrip/deploy/nginx.conf;
 ```
 
-Then reload nginx:
-
 ```bash
 nginx -t && systemctl reload nginx
 ```
 
-RoundTrip will be available at `http://yourserver/roundtrip`
+Access at `http://yourserver/roundtrip`
+
+## First Run
+
+Create an admin user:
+
+```bash
+cd /opt/roundtrip
+php artisan user:manage
+```
+
+Then log in and add targets through the UI, or use the CLI:
+
+```bash
+php artisan target:manage
+php artisan group:manage
+```
 
 ## Development
-
-For local development:
 
 ```bash
 ./scripts/dev.sh
 ```
 
-Then open http://localhost:3000/roundtrip
-
-## Adding Targets
-
-```bash
-php artisan tinker
->>> App\Models\Target::create(['name' => 'Google DNS', 'host' => '8.8.8.8']);
-```
-
-## API Endpoints
-
-- `GET /roundtrip/api/targets` - List all targets
-- `GET /roundtrip/api/targets/{id}/series` - Get ping data for a target
+Opens at http://localhost:3000/roundtrip
 
 ## Services
 
-RoundTrip runs two systemd services:
+Two systemd units:
 
-- `roundtrip-api` - Laravel API server
-- `roundtrip-poller` - Polls targets every 5 seconds
-
-Check status:
+- `roundtrip-api` - PHP backend on port 8000
+- `roundtrip-poller` - runs fping against enabled targets
 
 ```bash
 systemctl status roundtrip-api roundtrip-poller
+journalctl -u roundtrip-poller -f  # watch polling logs
 ```
 
-## Architecture
+## API
+
+All endpoints require auth (Bearer token).
 
 ```
-Laravel Backend (PHP 8.2)
-  - REST API for targets and series data
-  - Poller using fping 5.5 JSON output
-
-TimescaleDB (PostgreSQL 15)
-  - Hypertable for ping_results
-
-Next.js Frontend
-  - D3.js smoke chart
-  - Polls API every 5 seconds
+GET  /api/targets                    - list targets
+POST /api/targets                    - create target
+GET  /api/targets/{id}/series        - get ping data (supports ?from=&to=)
+GET  /api/groups                     - list groups
+POST /api/auth/login                 - get token
 ```
+
+## Stack
+
+- Laravel 12 (API + poller command)
+- Next.js 16 (static export)
+- TimescaleDB (postgres with time-series optimizations)
+- D3.js (charts)
+- Tailwind CSS v4
 
 ## License
 

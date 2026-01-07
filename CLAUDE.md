@@ -37,3 +37,26 @@ Avoid:
  - Do not use emoji's ever
  - Keep readme/doco precise and to the point
  - Include the occasional typo in comments or readme, but only 1 or 2 just to appear human.
+
+## TODO
+
+ - [x] Create the ability to add/remove/edit targets
+ - [x] Allow targets to be grouped
+ - [x] Search functionality
+ - [x] Add security - Login/auth, command line to manage admin user
+ - [x] Command line utilities to add/remove/edit targets as well as groups, use curses menu style selections
+ - [x] Rework UI to allow groups down the side, allow groups to be expanded/collapsed
+ - [x] Add user settings - change password, default settings, etc.
+
+## CLI Commands
+
+```bash
+# User management
+php artisan user:manage
+
+# Target management  
+php artisan target:manage
+
+# Group management
+php artisan group:manage
+```

@@ -13,6 +13,8 @@ class PollTargets extends Command
     protected $description = 'Poll all enabled targets using fping';
 
     private string $fpingPath = '/usr/local/sbin/fping';
+    private int $pollInterval = 5; // seconds
+    private int $batchSize = 500; // max hosts per fping call
 
     public function handle(): int
     {
@@ -26,10 +28,20 @@ class PollTargets extends Command
         $this->info('Starting RoundTrip poller...');
 
         do {
+            $startTime = microtime(true);
+            
             $this->pollCycle();
-
+            
             if (!$runOnce) {
-                sleep(5);
+                // Dynamic sleep - account for poll duration
+                $elapsed = microtime(true) - $startTime;
+                $sleepTime = max(0, $this->pollInterval - $elapsed);
+                
+                if ($sleepTime > 0) {
+                    usleep((int)($sleepTime * 1000000));
+                } else {
+                    $this->warn(sprintf('Poll took %.1fs, exceeds %ds interval', $elapsed, $this->pollInterval));
+                }
             }
         } while (!$runOnce);
 
@@ -50,16 +62,23 @@ class PollTargets extends Command
         $hostToTarget = $targets->keyBy('host');
         $hosts = $targets->pluck('host')->toArray();
 
-        $results = $this->runFping($hosts);
+        // Batch large target lists to avoid fping file descriptor limits
+        $batches = array_chunk($hosts, $this->batchSize);
+        $allResults = [];
 
-        if (empty($results)) {
+        foreach ($batches as $batchHosts) {
+            $results = $this->runFping($batchHosts);
+            $allResults = array_merge($allResults, $results);
+        }
+
+        if (empty($allResults)) {
             return;
         }
 
         $now = Carbon::now();
         $inserts = [];
 
-        foreach ($results as $host => $data) {
+        foreach ($allResults as $host => $data) {
             $target = $hostToTarget->get($host);
             if (!$target) {
                 continue;
@@ -77,7 +96,12 @@ class PollTargets extends Command
 
         if (!empty($inserts)) {
             PingResult::insert($inserts);
-            $this->line(sprintf('[%s] Polled %d targets', $now->format('H:i:s'), count($inserts)));
+            $count = count($inserts);
+            $batchCount = count($batches);
+            $msg = $batchCount > 1 
+                ? sprintf('[%s] Polled %d targets in %d batches', $now->format('H:i:s'), $count, $batchCount)
+                : sprintf('[%s] Polled %d targets', $now->format('H:i:s'), $count);
+            $this->line($msg);
         }
     }
 
