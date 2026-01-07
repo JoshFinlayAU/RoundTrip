@@ -133,10 +133,15 @@ export interface Target {
 
 export interface PingPoint {
   ts: string;
-  min_ms: number | null;
-  avg_ms: number | null;
-  max_ms: number | null;
-  loss_pct: number | null;
+  // Individual RTT (short ranges)
+  rtt_ms?: number | null;
+  seq?: number;
+  lost?: boolean;
+  // Aggregated (long ranges)
+  min_ms?: number | null;
+  avg_ms?: number | null;
+  max_ms?: number | null;
+  loss_pct?: number | null;
 }
 
 export interface SeriesResponse {

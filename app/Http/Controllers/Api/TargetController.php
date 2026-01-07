@@ -85,7 +85,7 @@ class TargetController extends Controller
         $validated = $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:5000'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:10000'],
         ]);
 
         $to = isset($validated['to'])
@@ -96,14 +96,49 @@ class TargetController extends Controller
             ? CarbonImmutable::parse($validated['from'])
             : $to->subHour();
 
-        $limit = $validated['limit'] ?? 2000;
-
-        $series = PingResult::query()
-            ->where('target_id', $target->id)
-            ->whereBetween('ts', [$from, $to])
-            ->orderBy('ts')
-            ->limit($limit)
-            ->get(['ts', 'min_ms', 'avg_ms', 'max_ms', 'loss_pct']);
+        $rangeMinutes = $from->diffInMinutes($to);
+        
+        // For longer ranges, aggregate data using TimescaleDB time_bucket
+        // Target ~2000 points max for good chart performance
+        if ($rangeMinutes > 360) { // > 6 hours, aggregate
+            $bucketInterval = match(true) {
+                $rangeMinutes > 525600 * 2 => '1 day',    // > 2 years: daily
+                $rangeMinutes > 129600 => '6 hours',      // > 3 months: 6-hourly
+                $rangeMinutes > 43200 => '1 hour',        // > 1 month: hourly
+                $rangeMinutes > 10080 => '30 minutes',    // > 1 week: 30-min
+                $rangeMinutes > 1440 => '5 minutes',      // > 24h: 5-min
+                default => '1 minute',                     // > 6h: 1-min
+            };
+            
+            $series = \DB::select("
+                SELECT 
+                    time_bucket(?, ts) as bucket,
+                    MIN(rtt_ms) as min_ms,
+                    AVG(rtt_ms) as avg_ms,
+                    MAX(rtt_ms) as max_ms,
+                    (SUM(CASE WHEN lost THEN 1 ELSE 0 END)::float / COUNT(*) * 100) as loss_pct
+                FROM ping_results
+                WHERE target_id = ? AND ts BETWEEN ? AND ?
+                GROUP BY bucket
+                ORDER BY bucket
+            ", [$bucketInterval, $target->id, $from, $to]);
+            
+            $series = collect($series)->map(fn($row) => [
+                'ts' => CarbonImmutable::parse($row->bucket)->format('Y-m-d\TH:i:s\Z'),
+                'min_ms' => $row->min_ms ? round((float)$row->min_ms, 3) : null,
+                'avg_ms' => $row->avg_ms ? round((float)$row->avg_ms, 3) : null,
+                'max_ms' => $row->max_ms ? round((float)$row->max_ms, 3) : null,
+                'loss_pct' => $row->loss_pct ? round((float)$row->loss_pct, 2) : null,
+            ]);
+        } else {
+            // For short ranges, return individual RTT points for true smoke effect
+            $series = PingResult::query()
+                ->where('target_id', $target->id)
+                ->whereBetween('ts', [$from, $to])
+                ->orderBy('ts')
+                ->orderBy('seq')
+                ->get(['ts', 'rtt_ms', 'seq', 'lost']);
+        }
 
         return response()->json([
             'target' => $target->only(['id', 'name', 'host', 'interval_seconds', 'enabled']),

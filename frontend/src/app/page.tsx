@@ -150,12 +150,30 @@ export default function Home() {
     await loadData();
   };
 
-  const stats = points.length > 0 ? {
-    latest: points[points.length - 1]?.avg_ms?.toFixed(2) || '-',
-    min: Math.min(...points.filter(p => p.min_ms !== null).map(p => p.min_ms!)).toFixed(2),
-    max: Math.max(...points.filter(p => p.max_ms !== null).map(p => p.max_ms!)).toFixed(2),
-    loss: (points.filter(p => (p.loss_pct || 0) > 0).length / points.length * 100).toFixed(1),
-  } : null;
+  const stats = points.length > 0 ? (() => {
+    // Detect if individual RTT data or aggregated
+    const isIndividual = points[0]?.rtt_ms !== undefined;
+    
+    if (isIndividual) {
+      const validPoints = points.filter(p => p.rtt_ms !== null && !p.lost);
+      const lostPoints = points.filter(p => p.lost);
+      const rttValues = validPoints.map(p => p.rtt_ms!);
+      
+      return {
+        latest: rttValues.length > 0 ? rttValues[rttValues.length - 1].toFixed(2) : '-',
+        min: rttValues.length > 0 ? Math.min(...rttValues).toFixed(2) : '-',
+        max: rttValues.length > 0 ? Math.max(...rttValues).toFixed(2) : '-',
+        loss: (lostPoints.length / points.length * 100).toFixed(1),
+      };
+    } else {
+      return {
+        latest: points[points.length - 1]?.avg_ms?.toFixed(2) || '-',
+        min: Math.min(...points.filter(p => p.min_ms !== null).map(p => p.min_ms!)).toFixed(2),
+        max: Math.max(...points.filter(p => p.max_ms !== null).map(p => p.max_ms!)).toFixed(2),
+        loss: (points.filter(p => (p.loss_pct || 0) > 0).length / points.length * 100).toFixed(1),
+      };
+    }
+  })() : null;
 
   if (authLoading) {
     return (
@@ -215,12 +233,15 @@ export default function Home() {
                 <div className="flex items-center gap-1 bg-zinc-800/50 border border-zinc-700 rounded-lg p-1">
                   {[
                     { value: 15, label: '15m' },
-                    { value: 30, label: '30m' },
                     { value: 60, label: '1h' },
-                    { value: 180, label: '3h' },
                     { value: 360, label: '6h' },
-                    { value: 720, label: '12h' },
                     { value: 1440, label: '24h' },
+                    { value: 10080, label: '1w' },
+                    { value: 43200, label: '1M' },
+                    { value: 129600, label: '3M' },
+                    { value: 259200, label: '6M' },
+                    { value: 525600, label: '1Y' },
+                    { value: 1576800, label: '3Y' },
                   ].map(({ value, label }) => (
                     <button
                       key={value}

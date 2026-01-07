@@ -11,18 +11,16 @@ class PingResult extends Model
     protected $fillable = [
         'target_id',
         'ts',
-        'min_ms',
-        'avg_ms',
-        'max_ms',
-        'loss_pct',
+        'rtt_ms',
+        'seq',
+        'lost',
     ];
 
     protected $casts = [
         'ts' => 'datetime',
-        'min_ms' => 'float',
-        'avg_ms' => 'float',
-        'max_ms' => 'float',
-        'loss_pct' => 'float',
+        'rtt_ms' => 'float',
+        'seq' => 'integer',
+        'lost' => 'boolean',
     ];
 
     protected function serializeDate(\DateTimeInterface $date): string

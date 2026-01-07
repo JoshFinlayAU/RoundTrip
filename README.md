@@ -127,4 +127,4 @@ CORS is enabled by default (allows all origins). If you need to restrict origins
 
 ## License
 
-MIT
+Uhh, I don't know. I'm not a lawyer. 

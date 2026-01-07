@@ -78,29 +78,31 @@ class PollTargets extends Command
         $now = Carbon::now();
         $inserts = [];
 
-        foreach ($allResults as $host => $data) {
+        foreach ($allResults as $host => $pings) {
             $target = $hostToTarget->get($host);
             if (!$target) {
                 continue;
             }
 
-            $inserts[] = [
-                'target_id' => $target->id,
-                'ts' => $now,
-                'min_ms' => $data['min'] ?? null,
-                'avg_ms' => $data['avg'] ?? null,
-                'max_ms' => $data['max'] ?? null,
-                'loss_pct' => $data['loss'] ?? null,
-            ];
+            foreach ($pings as $ping) {
+                $inserts[] = [
+                    'target_id' => $target->id,
+                    'ts' => $now,
+                    'rtt_ms' => $ping['rtt'],
+                    'seq' => $ping['seq'],
+                    'lost' => $ping['lost'],
+                ];
+            }
         }
 
         if (!empty($inserts)) {
             PingResult::insert($inserts);
-            $count = count($inserts);
+            $targetCount = count($allResults);
+            $pingCount = count($inserts);
             $batchCount = count($batches);
             $msg = $batchCount > 1 
-                ? sprintf('[%s] Polled %d targets in %d batches', $now->format('H:i:s'), $count, $batchCount)
-                : sprintf('[%s] Polled %d targets', $now->format('H:i:s'), $count);
+                ? sprintf('[%s] Polled %d targets (%d pings) in %d batches', $now->format('H:i:s'), $targetCount, $pingCount, $batchCount)
+                : sprintf('[%s] Polled %d targets (%d pings)', $now->format('H:i:s'), $targetCount, $pingCount);
             $this->line($msg);
         }
     }
@@ -108,13 +110,16 @@ class PollTargets extends Command
     private function runFping(array $hosts): array
     {
         $hostList = implode(' ', array_map('escapeshellarg', $hosts));
-        $cmd = "{$this->fpingPath} -J -c 3 -q {$hostList} 2>&1";
+        // Remove -q to get individual ping responses, use 5 pings
+        $cmd = "{$this->fpingPath} -J -c 5 {$hostList} 2>&1";
 
         $output = [];
         $returnCode = 0;
         exec($cmd, $output, $returnCode);
 
+        // Track individual pings per host
         $results = [];
+        $expectedSeqs = []; // Track which seqs we've seen per host
 
         foreach ($output as $line) {
             $json = json_decode($line, true);
@@ -122,23 +127,50 @@ class PollTargets extends Command
                 continue;
             }
 
+            // Individual ping response
+            if (isset($json['resp'])) {
+                $resp = $json['resp'];
+                $host = $resp['host'] ?? null;
+                if (!$host) continue;
+
+                if (!isset($results[$host])) {
+                    $results[$host] = [];
+                    $expectedSeqs[$host] = [];
+                }
+
+                $seq = $resp['seq'] ?? 0;
+                $expectedSeqs[$host][$seq] = true;
+                
+                $results[$host][] = [
+                    'seq' => $seq,
+                    'rtt' => $resp['rtt'] ?? null,
+                    'lost' => false,
+                ];
+            }
+
+            // Summary - use to detect lost packets
             if (isset($json['summary'])) {
                 $summary = $json['summary'];
                 $host = $summary['host'] ?? null;
-                if (!$host) {
-                    continue;
+                if (!$host) continue;
+
+                $xmt = $summary['xmt'] ?? 5;
+                
+                if (!isset($results[$host])) {
+                    $results[$host] = [];
+                    $expectedSeqs[$host] = [];
                 }
 
-                $xmt = $summary['xmt'] ?? 0;
-                $rcv = $summary['rcv'] ?? 0;
-                $lossPct = $xmt > 0 ? (($xmt - $rcv) / $xmt) * 100 : 100;
-
-                $results[$host] = [
-                    'min' => $summary['rttMin'] ?? null,
-                    'avg' => $summary['rttAvg'] ?? null,
-                    'max' => $summary['rttMax'] ?? null,
-                    'loss' => $lossPct,
-                ];
+                // Add lost packets for any missing seqs
+                for ($seq = 0; $seq < $xmt; $seq++) {
+                    if (!isset($expectedSeqs[$host][$seq])) {
+                        $results[$host][] = [
+                            'seq' => $seq,
+                            'rtt' => null,
+                            'lost' => true,
+                        ];
+                    }
+                }
             }
         }
 
