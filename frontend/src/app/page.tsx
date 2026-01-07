@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Activity, Clock, TrendingDown, TrendingUp, AlertTriangle, ZoomIn, ZoomOut } from 'lucide-react';
+import { Activity, Clock, TrendingDown, TrendingUp, AlertTriangle, Plus, Radar } from 'lucide-react';
 import SmokeChart from '@/components/SmokeChart';
 import Sidebar from '@/components/Sidebar';
 import TargetModal from '@/components/TargetModal';
@@ -207,6 +207,31 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
+        {/* Empty State - No Targets */}
+        {targets.length === 0 && !loading ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="max-w-md text-center">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-blue-500/30 flex items-center justify-center mx-auto mb-6">
+                <Radar className="w-10 h-10 text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Welcome to RoundTrip</h2>
+              <p className="text-zinc-400 mb-6">
+                Get started by adding your first target to monitor. RoundTrip will ping your targets and display latency metrics in beautiful smoke-style graphs.
+              </p>
+              <button
+                onClick={handleAddTarget}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20"
+              >
+                <Plus className="w-5 h-5" />
+                Add Your First Target
+              </button>
+              <p className="text-zinc-600 text-sm mt-6">
+                You can also add targets via CLI: <code className="text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">php artisan target:manage</code>
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Top Bar */}
         <header className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50 px-8 py-4">
           <div className="flex items-center justify-between">
@@ -341,6 +366,8 @@ export default function Home() {
             )}
           </div>
         </section>
+          </>
+        )}
       </main>
 
       {/* Modals */}
