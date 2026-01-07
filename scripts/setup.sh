@@ -30,11 +30,11 @@ chown -R roundtrip:roundtrip "$PROJECT_DIR"
 # Laravel
 echo "Configuring backend..."
 cd "$PROJECT_DIR"
+sudo -u roundtrip composer install --no-dev --optimize-autoloader
 if [ ! -f .env ]; then
     sudo -u roundtrip cp .env.example .env
     sudo -u roundtrip php artisan key:generate
 fi
-sudo -u roundtrip composer install --no-dev --optimize-autoloader
 sudo -u roundtrip php artisan migrate --force
 
 # Frontend
