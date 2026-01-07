@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ChevronDown,
   ChevronRight,
@@ -240,13 +241,13 @@ export default function Sidebar({
               <p className="text-sm font-medium text-zinc-300 truncate">{user.name}</p>
               <p className="text-xs text-zinc-500 truncate">{user.email}</p>
             </div>
-            <button
-              onClick={() => router.push('/roundtrip/settings')}
+            <Link
+              href="/settings"
               className="p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
               title="Settings"
             >
               <User className="w-4 h-4" />
-            </button>
+            </Link>
             <button
               onClick={onLogout}
               className="p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"

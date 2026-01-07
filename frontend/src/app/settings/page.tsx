@@ -82,7 +82,7 @@ export default function SettingsPage() {
       <header className="border-b border-zinc-800 px-8 py-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.push('/roundtrip/')}
+            onClick={() => router.push('/')}
             className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
