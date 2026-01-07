@@ -120,10 +120,11 @@ export default function SmokeChart({ points, height = 350 }: SmokeChartProps) {
       .attr('fill', '#ef4444')
       .attr('opacity', 0.7);
 
-    // X axis
+    // X axis - use local timezone
+    const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
     g.append('g')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale).ticks(6).tickFormat(d => d3.timeFormat('%H:%M:%S')(d as Date)))
+      .call(d3.axisBottom(xScale).ticks(6).tickFormat(d => formatTime(d as Date)))
       .selectAll('text')
       .attr('fill', '#9ca3af');
 

@@ -24,4 +24,9 @@ class PingResult extends Model
         'max_ms' => 'float',
         'loss_pct' => 'float',
     ];
+
+    protected function serializeDate(\DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d\TH:i:s\Z');
+    }
 }

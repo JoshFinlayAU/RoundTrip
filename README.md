@@ -19,7 +19,7 @@ Designed to run alongside LibreNMS but works standalone too.
 - PostgreSQL 15 with TimescaleDB
 - PHP 8.2+
 - Node.js 20+
-- fping 5.5+ (needs JSON output, script builds from source)
+- fping 5.5+ (needs JSON output, script builds from source - I could be bias here because I wrote the initial JSON implementation 😛)
 
 ## Install
 
@@ -84,9 +84,27 @@ systemctl status roundtrip-api roundtrip-poller
 journalctl -u roundtrip-poller -f  # watch polling logs
 ```
 
+## LibreNMS Integration
+
+RoundTrip includes a plugin for LibreNMS that shows latency graphs directly on device overview pages. Features:
+
+- Same smoke-style graphs as the main UI
+- Real-time updates every 5 seconds
+- Time range selector (15m to 24h)
+- One-click button to add devices to RoundTrip
+
+```bash
+./librenms-plugin/install.sh
+php artisan token:manage  # create a token for LibreNMS
+```
+
+Then enable and configure the plugin in LibreNMS under Settings > System > Plugins.
+
+See `librenms-plugin/README.md` for full setup instructions.
+
 ## API
 
-All endpoints require auth (Bearer token).
+All endpoints require auth (Bearer token). Generate tokens with `php artisan token:manage`.
 
 ```
 GET  /api/targets                    - list targets
@@ -103,6 +121,7 @@ POST /api/auth/login                 - get token
 - TimescaleDB (postgres with time-series optimizations)
 - D3.js (charts)
 - Tailwind CSS v4
+- fping 5.5
 
 ## License
 
