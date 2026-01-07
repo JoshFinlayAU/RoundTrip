@@ -6,9 +6,9 @@ Network latency monitoring with smoke-style graphs. Built as a modern alternativ
 
 - Pings targets at configurable intervals using fping
 - Stores results in TimescaleDB (handles time-series data well)
-- Shows min/avg/max latency as a "smoke" band with packet loss markers
+- Shows individual ping RTTs as layered gradient "smoke" with packet loss markers
 - Groups targets for organisation
-- Interactive charts with tooltips, configurable time ranges (15m to 24h)
+- Interactive charts with tooltips, configurable time ranges (15m to 3 years)
 - Token-based auth, manage users/targets/groups via CLI
 
 Designed to run alongside LibreNMS but works standalone too.
@@ -90,7 +90,7 @@ RoundTrip includes a plugin for LibreNMS that shows latency graphs directly on d
 
 - Same smoke-style graphs as the main UI
 - Real-time updates every 5 seconds
-- Time range selector (15m to 24h)
+- Time range selector (15m to 3 years)
 - One-click button to add devices to RoundTrip
 
 ```bash
