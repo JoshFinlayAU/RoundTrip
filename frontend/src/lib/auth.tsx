@@ -31,10 +31,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       const token = getAuthToken();
+      const isLoginPage = pathname === '/login' || pathname === '/login/';
+      
       if (!token) {
         setLoading(false);
-        if (pathname !== '/login') {
-          window.location.href = '/roundtrip/login';
+        if (!isLoginPage) {
+          window.location.href = '/roundtrip/login/';
         }
         return;
       }
@@ -42,13 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const userData = await fetchCurrentUser();
         setUser(userData);
-        if (pathname === '/login') {
+        if (isLoginPage) {
           window.location.href = '/roundtrip/';
         }
       } catch {
         setUser(null);
-        if (pathname !== '/login') {
-          window.location.href = '/roundtrip/login';
+        if (!isLoginPage) {
+          window.location.href = '/roundtrip/login/';
         }
       } finally {
         setLoading(false);
