@@ -2,44 +2,53 @@
 set -e
 
 # Auto-update RoundTrip to the latest stable release (tagged version)
-# Run as root or with sudo
+# Run as root - will switch to roundtrip user for app operations
 
 PROJECT_DIR="/opt/roundtrip"
 cd "$PROJECT_DIR"
 
+if [ "$EUID" -ne 0 ]; then
+    echo "Run this as root"
+    exit 1
+fi
+
 echo "=== RoundTrip Auto-Update ==="
 echo ""
 
-# Get current version
-CURRENT=$(git describe --tags --always 2>/dev/null || echo "unknown")
-echo "Current version: $CURRENT"
-
 # Fetch latest tags (force to handle any local tag conflicts)
 echo "Fetching updates..."
-git fetch --tags --force --quiet
+sudo -u roundtrip git fetch --tags --force --quiet
 
 # Find latest tag (sorted by version number)
-LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
+LATEST=$(sudo -u roundtrip git tag -l 'v*' --sort=-v:refname | head -1)
 
 if [ -z "$LATEST" ]; then
     echo "No release tags found. Nothing to update."
     exit 0
 fi
 
-echo "Latest release: $LATEST"
+# Get commit hashes for comparison
+CURRENT_COMMIT=$(sudo -u roundtrip git rev-parse HEAD)
+LATEST_COMMIT=$(sudo -u roundtrip git rev-parse "$LATEST" 2>/dev/null)
 
-# Check if already on latest
-if [ "$CURRENT" = "$LATEST" ]; then
+echo "Current: $(sudo -u roundtrip git describe --tags --always 2>/dev/null) ($CURRENT_COMMIT)"
+echo "Latest:  $LATEST ($LATEST_COMMIT)"
+
+# Check if already on latest by comparing commits
+if [ "$CURRENT_COMMIT" = "$LATEST_COMMIT" ]; then
     echo "Already on latest version. Nothing to do."
     exit 0
 fi
 
 echo ""
-echo "Updating from $CURRENT to $LATEST..."
+echo "Updating to $LATEST..."
 echo ""
 
 # Checkout the latest tag
-git checkout "$LATEST" --quiet
+sudo -u roundtrip git checkout "$LATEST" --quiet
+
+# Fix ownership after checkout
+chown -R roundtrip:roundtrip "$PROJECT_DIR"
 
 # Run composer install
 echo "Installing PHP dependencies..."
