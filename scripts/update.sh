@@ -14,9 +14,9 @@ echo ""
 CURRENT=$(git describe --tags --always 2>/dev/null || echo "unknown")
 echo "Current version: $CURRENT"
 
-# Fetch latest tags
+# Fetch latest tags (force to handle any local tag conflicts)
 echo "Fetching updates..."
-git fetch --tags --quiet
+git fetch --tags --force --quiet
 
 # Find latest tag (sorted by version number)
 LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
