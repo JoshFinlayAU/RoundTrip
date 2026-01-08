@@ -16,10 +16,12 @@ echo "Installing services..."
 
 cp "$PROJECT_DIR/deploy/roundtrip-api.service" /etc/systemd/system/
 cp "$PROJECT_DIR/deploy/roundtrip-poller.service" /etc/systemd/system/
+cp "$PROJECT_DIR/deploy/roundtrip-update.service" /etc/systemd/system/
+cp "$PROJECT_DIR/deploy/roundtrip-update.timer" /etc/systemd/system/
 
 systemctl daemon-reload
-systemctl enable roundtrip-api roundtrip-poller
-systemctl start roundtrip-api roundtrip-poller
+systemctl enable roundtrip-api roundtrip-poller roundtrip-update.timer
+systemctl start roundtrip-api roundtrip-poller roundtrip-update.timer
 
 echo ""
 echo "Services running:"

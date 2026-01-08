@@ -79,14 +79,31 @@ Opens at http://localhost:3000/roundtrip
 
 ## Services
 
-Two systemd units:
+Three systemd units:
 
 - `roundtrip-api` - PHP backend on port 8000
 - `roundtrip-poller` - runs fping against enabled targets
+- `roundtrip-update.timer` - checks for updates nightly at 3am
 
 ```bash
 systemctl status roundtrip-api roundtrip-poller
 journalctl -u roundtrip-poller -f  # watch polling logs
+```
+
+## Updates
+
+RoundTrip can update itself automatically. It pulls the latest tagged release (e.g. `v1.0.0`), so you'll only get versions that have been explicitly marked as stable.
+
+The nightly timer is enabled by default. To update manually:
+
+```bash
+./scripts/update.sh
+```
+
+To disable auto-updates:
+
+```bash
+systemctl disable --now roundtrip-update.timer
 ```
 
 ## LibreNMS Integration

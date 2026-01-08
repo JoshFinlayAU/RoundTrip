@@ -1,0 +1,9 @@
+[Unit]
+Description=RoundTrip Auto-Update
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/roundtrip/scripts/update.sh
+StandardOutput=journal
+StandardError=journal
