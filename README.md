@@ -107,6 +107,22 @@ Then enable and configure the plugin in LibreNMS under https://librenms/plugin/s
 
 See `librenms-plugin/README.md` for full setup instructions.
 
+### Bulk Import from LibreNMS
+
+If you've got a bunch of devices in LibreNMS already, you can pull them all into RoundTrip in one go:
+
+```bash
+# See what would be imported first
+php artisan librenms:import --url=https://your-librenms --token=YOUR_API_TOKEN --dry-run
+
+# Actually do it
+php artisan librenms:import --url=https://your-librenms --token=YOUR_API_TOKEN
+```
+
+This grabs all your devices and their groups from the LibreNMS API. Devices that already exist (matched by hostname or IP) get skipped. Groups are created automatically if they don't exist yet.
+
+You can set a custom ping interval with `--interval=30` (default is 60 seconds).
+
 ## API
 
 All endpoints require auth (Bearer token). Generate tokens with `php artisan token:manage`.

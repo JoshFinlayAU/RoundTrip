@@ -59,9 +59,12 @@ class ImportLibreNMS extends Command
         }
         $this->info("Found " . count($devices) . " devices in LibreNMS");
 
-        // Get existing targets by host
+        // Get existing targets by host (both hostname and any IPs)
         $existingHosts = Target::pluck('host')->map(fn($h) => strtolower($h))->toArray();
         $existingGroups = Group::pluck('id', 'name')->toArray();
+        
+        // Also track existing targets by name for matching
+        $existingNames = Target::pluck('name')->map(fn($n) => strtolower($n))->toArray();
 
         // Track stats
         $stats = [
@@ -88,8 +91,23 @@ class ImportLibreNMS extends Command
                 continue;
             }
 
-            // Check if already exists
-            if (in_array(strtolower($hostname), $existingHosts)) {
+            // Check if already exists by hostname, IP, or name
+            $ip = $device['ip'] ?? null;
+            $checkValues = array_filter([
+                strtolower($hostname),
+                $ip ? strtolower($ip) : null,
+                $sysName ? strtolower($sysName) : null,
+            ]);
+            
+            $alreadyExists = false;
+            foreach ($checkValues as $val) {
+                if (in_array($val, $existingHosts) || in_array($val, $existingNames)) {
+                    $alreadyExists = true;
+                    break;
+                }
+            }
+            
+            if ($alreadyExists) {
                 $stats['devices_skipped']++;
                 $progressBar->advance();
                 continue;
@@ -118,8 +136,9 @@ class ImportLibreNMS extends Command
                             'sort_order' => $maxSortOrder + 1,
                         ]);
                         $groupId = $group->id;
-                        $existingGroups[$groupName] = $groupId;
                     }
+                    // Track group as "created" for both dry-run and real run
+                    $existingGroups[$groupName] = $groupId ?? -1;
                     $stats['groups_created']++;
                 }
             }
