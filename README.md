@@ -165,4 +165,4 @@ CORS is enabled by default (allows all origins). If you need to restrict origins
 
 ## License
 
-Uhh, I don't know. I'm not a lawyer..
+Uhh, I don't know. I'm not a lawyer...
