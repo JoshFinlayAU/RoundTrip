@@ -17,6 +17,7 @@ echo ""
 
 # Fetch latest tags (force to handle any local tag conflicts)
 echo "Fetching updates..."
+sudo -u roundtrip git config --global --add safe.directory /opt/roundtrip
 sudo -u roundtrip git fetch --tags --force --quiet
 
 # Find latest tag (sorted by version number)
