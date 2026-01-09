@@ -25,8 +25,8 @@ class AuthController extends Controller
             ]);
         }
 
-        // Revoke existing tokens
-        $user->tokens()->delete();
+        // Revoke existing web session tokens (keep permanent API tokens)
+        $user->tokens()->where('name', 'auth-token')->delete();
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
