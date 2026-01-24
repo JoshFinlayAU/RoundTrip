@@ -98,21 +98,58 @@ class TargetController extends Controller
 
         $rangeMinutes = $from->diffInMinutes($to);
         
-        // For longer ranges, aggregate data using TimescaleDB time_bucket
+        // For longer ranges, use continuous aggregates or aggregate on-the-fly
         // Target ~2000 points max for good chart performance
-        if ($rangeMinutes > 360) { // > 6 hours, aggregate
-            $bucketInterval = match(true) {
-                $rangeMinutes > 525600 * 2 => '1 day',    // > 2 years: daily
-                $rangeMinutes > 129600 => '6 hours',      // > 3 months: 6-hourly
-                $rangeMinutes > 43200 => '1 hour',        // > 1 month: hourly
-                $rangeMinutes > 10080 => '30 minutes',    // > 1 week: 30-min
-                $rangeMinutes > 1440 => '5 minutes',      // > 24h: 5-min
-                default => '1 minute',                     // > 6h: 1-min
-            };
-            
+        if ($rangeMinutes > 43200) { // > 1 month: use hourly continuous aggregate
             $series = \DB::select("
                 SELECT 
-                    time_bucket(?, ts) as bucket,
+                    bucket,
+                    min_ms,
+                    avg_ms,
+                    max_ms,
+                    CASE WHEN sample_count > 0 
+                        THEN (lost_count::float / sample_count * 100) 
+                        ELSE 0 
+                    END as loss_pct
+                FROM ping_results_hourly
+                WHERE target_id = ? AND bucket BETWEEN ? AND ?
+                ORDER BY bucket
+            ", [$target->id, $from, $to]);
+            
+            $series = collect($series)->map(fn($row) => [
+                'ts' => CarbonImmutable::parse($row->bucket)->format('Y-m-d\TH:i:s\Z'),
+                'min_ms' => $row->min_ms ? round((float)$row->min_ms, 3) : null,
+                'avg_ms' => $row->avg_ms ? round((float)$row->avg_ms, 3) : null,
+                'max_ms' => $row->max_ms ? round((float)$row->max_ms, 3) : null,
+                'loss_pct' => $row->loss_pct ? round((float)$row->loss_pct, 2) : null,
+            ]);
+        } elseif ($rangeMinutes > 1440) { // > 24h: use 5-min continuous aggregate
+            $series = \DB::select("
+                SELECT 
+                    bucket,
+                    min_ms,
+                    avg_ms,
+                    max_ms,
+                    CASE WHEN sample_count > 0 
+                        THEN (lost_count::float / sample_count * 100) 
+                        ELSE 0 
+                    END as loss_pct
+                FROM ping_results_5min
+                WHERE target_id = ? AND bucket BETWEEN ? AND ?
+                ORDER BY bucket
+            ", [$target->id, $from, $to]);
+            
+            $series = collect($series)->map(fn($row) => [
+                'ts' => CarbonImmutable::parse($row->bucket)->format('Y-m-d\TH:i:s\Z'),
+                'min_ms' => $row->min_ms ? round((float)$row->min_ms, 3) : null,
+                'avg_ms' => $row->avg_ms ? round((float)$row->avg_ms, 3) : null,
+                'max_ms' => $row->max_ms ? round((float)$row->max_ms, 3) : null,
+                'loss_pct' => $row->loss_pct ? round((float)$row->loss_pct, 2) : null,
+            ]);
+        } elseif ($rangeMinutes > 360) { // > 6 hours: aggregate on-the-fly (1-min buckets)
+            $series = \DB::select("
+                SELECT 
+                    time_bucket('1 minute', ts) as bucket,
                     MIN(rtt_ms) as min_ms,
                     AVG(rtt_ms) as avg_ms,
                     MAX(rtt_ms) as max_ms,
@@ -121,7 +158,7 @@ class TargetController extends Controller
                 WHERE target_id = ? AND ts BETWEEN ? AND ?
                 GROUP BY bucket
                 ORDER BY bucket
-            ", [$bucketInterval, $target->id, $from, $to]);
+            ", [$target->id, $from, $to]);
             
             $series = collect($series)->map(fn($row) => [
                 'ts' => CarbonImmutable::parse($row->bucket)->format('Y-m-d\TH:i:s\Z'),

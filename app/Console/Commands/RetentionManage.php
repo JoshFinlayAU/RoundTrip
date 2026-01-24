@@ -74,22 +74,59 @@ class RetentionManage extends Command
             $this->line("Data range: <info>{$range->min_ts}</info> to <info>{$range->max_ts}</info>");
         }
 
-        // Chunk sizes
+        // Chunk sizes with compression status
         $this->newLine();
         $this->line("Chunks:");
         $chunks = DB::select("
             SELECT 
-                chunk_name,
-                pg_size_pretty(total_bytes) as size,
-                range_start::date as start_date,
-                range_end::date as end_date
-            FROM timescaledb_information.chunks
-            WHERE hypertable_name = 'ping_results'
-            ORDER BY range_start
+                c.chunk_name,
+                pg_size_pretty(c.total_bytes) as size,
+                c.range_start::date as start_date,
+                c.range_end::date as end_date,
+                CASE WHEN cc.chunk_name IS NOT NULL THEN true ELSE false END as is_compressed
+            FROM timescaledb_information.chunks c
+            LEFT JOIN timescaledb_information.compressed_chunk_stats cc 
+                ON c.chunk_name = cc.chunk_name
+            WHERE c.hypertable_name = 'ping_results'
+            ORDER BY c.range_start
         ");
 
         foreach ($chunks as $chunk) {
-            $this->line("  {$chunk->chunk_name}: {$chunk->size} ({$chunk->start_date} to {$chunk->end_date})");
+            $status = $chunk->is_compressed ? '<comment>[compressed]</comment>' : '';
+            $this->line("  {$chunk->chunk_name}: {$chunk->size} ({$chunk->start_date} to {$chunk->end_date}) {$status}");
+        }
+
+        // Show compression policy
+        $this->newLine();
+        $compPolicy = DB::selectOne("
+            SELECT config 
+            FROM timescaledb_information.jobs 
+            WHERE proc_name = 'policy_compression' 
+            AND hypertable_name = 'ping_results'
+        ");
+        if ($compPolicy) {
+            $config = json_decode($compPolicy->config, true);
+            $interval = $config['compress_after'] ?? 'unknown';
+            $this->line("Compression policy: <info>compress after {$interval}</info>");
+        } else {
+            $this->line("Compression policy: <comment>not set</comment>");
+        }
+
+        // Show continuous aggregates
+        $this->newLine();
+        $this->line("Continuous aggregates:");
+        $aggs = DB::select("
+            SELECT 
+                view_name,
+                pg_size_pretty(pg_total_relation_size(format('%I.%I', view_schema, view_name)::regclass)) as size
+            FROM timescaledb_information.continuous_aggregates
+            WHERE hypertable_name = 'ping_results'
+        ");
+        foreach ($aggs as $agg) {
+            $this->line("  {$agg->view_name}: {$agg->size}");
+        }
+        if (empty($aggs)) {
+            $this->line("  <comment>none</comment>");
         }
     }
 
