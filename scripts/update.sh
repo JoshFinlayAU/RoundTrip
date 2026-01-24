@@ -15,6 +15,9 @@ fi
 echo "=== RoundTrip Auto-Update ==="
 echo ""
 
+# Fix ownership if needed (handles installs done as root)
+chown -R roundtrip:roundtrip "$PROJECT_DIR"
+
 # Fetch latest tags (force to handle any local tag conflicts)
 echo "Fetching updates..."
 sudo -u roundtrip git config --global --add safe.directory /opt/roundtrip
